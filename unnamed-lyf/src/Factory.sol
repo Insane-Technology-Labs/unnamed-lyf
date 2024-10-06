@@ -159,20 +159,20 @@ contract Factory is IFactory {
         {
             ICollateral(lPool.collateral)._initialize(
                 "Lyf Collateral",
-                "cTAROT",
+                "cLYF",
                 uniswapV2Pair,
                 lPool.borrowable0,
                 lPool.borrowable1
             );
             IBorrowable(lPool.borrowable0)._initialize(
                 "Lyf Borrowable",
-                "bTAROT",
+                "bLYF",
                 token0,
                 lPool.collateral
             );
             IBorrowable(lPool.borrowable1)._initialize(
                 "Lyf Borrowable",
-                "bTAROT",
+                "bLYF",
                 token1,
                 lPool.collateral
             );

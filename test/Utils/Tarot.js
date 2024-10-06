@@ -69,7 +69,7 @@ async function makeLyfPriceOracle(opts = {}) {
 	return await MockOracle.new();
 }
 
-//TAROT DEPLOYER
+//LYF DEPLOYER
 
 async function makeBDeployer(opts = {}) {
 	return await BDeployer.new();
