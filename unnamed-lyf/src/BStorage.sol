@@ -1,4 +1,5 @@
-pragma solidity =0.5.16;
+// SPDX-License-Identifier: GPL-2.0-or-later
+pragma solidity ^0.8.20;
 
 contract BStorage {
 
@@ -12,7 +13,7 @@ contract BStorage {
 	}
 	mapping(address => BorrowSnapshot) internal borrowBalances;	
 
-	// use one memory slot
+	/// @dev use one memory slot
 	uint112 public borrowIndex = 1e18;
 	uint112 public totalBorrows;
 	uint32 public accrualTimestamp = uint32(block.timestamp % 2**32);	
