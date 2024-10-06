@@ -1,8 +1,8 @@
-pragma solidity =0.5.16;
+pragma solidity ^0.8.20;
 
 import "../../contracts/libraries/UQ112x112.sol";
-import "../../contracts/interfaces/IUniswapV2Pair.sol";
-import "../../contracts/interfaces/ILyfPriceOracle.sol";
+import "../..//interfaces/IUniswapV2Pair.sol";
+import "../..//interfaces/ILyfPriceOracle.sol";
 
 contract MockOracle is ILyfPriceOracle {
 	using UQ112x112 for uint224;

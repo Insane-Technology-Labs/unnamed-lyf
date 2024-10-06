@@ -2,14 +2,14 @@
 pragma solidity ^0.8.20;
 
 interface ILyfCallee {
-    function tarotBorrow(
+    function lyfBorrow(
         address sender,
         address borrower,
         uint256 borrowAmount,
         bytes calldata data
     ) external;
 
-    function tarotRedeem(
+    function lyfRedeem(
         address sender,
         uint256 redeemAmount,
         bytes calldata data

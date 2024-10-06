@@ -1,13 +1,13 @@
-pragma solidity =0.5.16;
+pragma solidity ^0.8.20;
 
-import "../../contracts/interfaces/IBorrowable.sol";
-import "../../contracts/interfaces/ICollateral.sol";
-import "../../contracts/interfaces/ILyfCallee.sol";
+import "../..//interfaces/IBorrowable.sol";
+import "../..//interfaces/ICollateral.sol";
+import "../..//interfaces/ILyfCallee.sol";
 
 contract ReentrantCallee is ILyfCallee {
     constructor() public {}
 
-    function tarotBorrow(
+    function lyfBorrow(
         address sender,
         address borrower,
         uint256 borrowAmount,
@@ -28,7 +28,7 @@ contract ReentrantCallee is ILyfCallee {
         else if (i == 7) IBorrowable(msg.sender).underlying();
     }
 
-    function tarotRedeem(
+    function lyfRedeem(
         address sender,
         uint256 redeemAmount,
         bytes calldata data

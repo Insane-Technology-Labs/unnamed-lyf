@@ -7,9 +7,13 @@ import "./interfaces/IPoolToken.sol";
 import "./ErrorHandler.sol";
 
 contract PoolToken is IPoolToken, LyfERC20 {
+    /// @inheritdoc IPoolToken
     address public underlying;
+    /// @inheritdoc IPoolToken
     address public factory;
+    /// @inheritdoc IPoolToken
     uint256 public totalBalance;
+    /// @inheritdoc IPoolToken
     uint256 public constant MINIMUM_LIQUIDITY = 1000;
 
     event Mint(
@@ -28,7 +32,7 @@ contract PoolToken is IPoolToken, LyfERC20 {
 
     /*** Initialize ***/
 
-    // called once by the factory
+    /// @inheritdoc IPoolToken
     function _setFactory() external {
         require(factory == address(0), ErrorHandler.FAS());
         factory = msg.sender;
@@ -49,7 +53,8 @@ contract PoolToken is IPoolToken, LyfERC20 {
         );
     }
 
-    // this low-level function should be called from another contract
+    /// @inheritdoc IPoolToken
+    /// @dev this low-level function should be called from another contract
     function mint(
         address minter
     ) external nonReentrant update returns (uint256 mintTokens) {
@@ -68,7 +73,8 @@ contract PoolToken is IPoolToken, LyfERC20 {
         emit Mint(msg.sender, minter, mintAmount, mintTokens);
     }
 
-    // this low-level function should be called from another contract
+    /// @inheritdoc IPoolToken
+    /// @dev this low-level function should be called from another contract
     function redeem(
         address redeemer
     ) external nonReentrant update returns (uint256 redeemAmount) {
@@ -82,7 +88,7 @@ contract PoolToken is IPoolToken, LyfERC20 {
         emit Redeem(msg.sender, redeemer, redeemAmount, redeemTokens);
     }
 
-    /// @dev force real balance to match totalBalance
+    /// @inheritdoc IPoolToken
     function skim(address to) external nonReentrant {
         IERC20(underlying).transfer(
             to,
@@ -90,7 +96,7 @@ contract PoolToken is IPoolToken, LyfERC20 {
         );
     }
 
-    /// @dev force totalBalance to match real balance
+    /// @inheritdoc IPoolToken
     function sync() external nonReentrant update {}
 
     /// @dev prevents a contract from calling itself, directly or indirectly.

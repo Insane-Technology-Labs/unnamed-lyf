@@ -57,15 +57,15 @@
       "type": "function"
     }
   ],
-  "metadata": "{\"compiler\":{\"version\":\"0.5.16+commit.9c3226ce\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"borrower\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"borrowAmount\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"impermaxBorrow\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"redeemAmount\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"impermaxRedeem\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"methods\":{}},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/Users/simor/Desktop/impermax-x-uniswapv2-core/contracts/interfaces/IImpermaxCallee.sol\":\"IImpermaxCallee\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"optimizer\":{\"enabled\":true,\"runs\":999999},\"remappings\":[]},\"sources\":{\"/C/Users/simor/Desktop/impermax-x-uniswapv2-core/contracts/interfaces/IImpermaxCallee.sol\":{\"keccak256\":\"0x8a34b6c59347d7246d45561ea6de67b7627bee144045fce316f3225e36a2165a\",\"urls\":[\"bzz-raw://22293bc770da410f1b534be76073f28f64ab62aeba8cae7225fc2058ab2356b1\",\"dweb:/ipfs/QmUmYVC4hUgqL8YGvVbTnFGzk4QbXw7zCGeA5EkuAEJtFN\"]}},\"version\":1}",
+  "metadata": "{\"compiler\":{\"version\":\"0.5.16+commit.9c3226ce\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"borrower\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"borrowAmount\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"impermaxBorrow\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"redeemAmount\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"impermaxRedeem\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"methods\":{}},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/Users/simor/Desktop/impermax-x-uniswapv2-core//interfaces/IImpermaxCallee.sol\":\"IImpermaxCallee\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"optimizer\":{\"enabled\":true,\"runs\":999999},\"remappings\":[]},\"sources\":{\"/C/Users/simor/Desktop/impermax-x-uniswapv2-core//interfaces/IImpermaxCallee.sol\":{\"keccak256\":\"0x8a34b6c59347d7246d45561ea6de67b7627bee144045fce316f3225e36a2165a\",\"urls\":[\"bzz-raw://22293bc770da410f1b534be76073f28f64ab62aeba8cae7225fc2058ab2356b1\",\"dweb:/ipfs/QmUmYVC4hUgqL8YGvVbTnFGzk4QbXw7zCGeA5EkuAEJtFN\"]}},\"version\":1}",
   "bytecode": "0x",
   "deployedBytecode": "0x",
   "sourceMap": "",
   "deployedSourceMap": "",
-  "source": "pragma solidity >=0.5.0;\r\n\r\ninterface IImpermaxCallee {\r\n    function impermaxBorrow(address sender, address borrower, uint borrowAmount, bytes calldata data) external;\r\n    function impermaxRedeem(address sender, uint redeemAmount, bytes calldata data) external;\r\n}",
+  "source": "pragma solidity >=0.5.0;\r\n\r\ninterface IImpermaxCallee {\r\n    function impermaxBorrow(address sender, address borrower, uint256 borrowAmount, bytes calldata data) external;\r\n    function impermaxRedeem(address sender, uint256 redeemAmount, bytes calldata data) external;\r\n}",
   "sourcePath": "C:\\Users\\simor\\Desktop\\impermax-x-uniswapv2-core\\contracts\\interfaces\\IImpermaxCallee.sol",
   "ast": {
-    "absolutePath": "/C/Users/simor/Desktop/impermax-x-uniswapv2-core/contracts/interfaces/IImpermaxCallee.sol",
+    "absolutePath": "/C/Users/simor/Desktop/impermax-x-uniswapv2-core//interfaces/IImpermaxCallee.sol",
     "exportedSymbols": {
       "IImpermaxCallee": [
         5172
@@ -347,7 +347,7 @@
     "src": "0:266:20"
   },
   "legacyAST": {
-    "absolutePath": "/C/Users/simor/Desktop/impermax-x-uniswapv2-core/contracts/interfaces/IImpermaxCallee.sol",
+    "absolutePath": "/C/Users/simor/Desktop/impermax-x-uniswapv2-core//interfaces/IImpermaxCallee.sol",
     "exportedSymbols": {
       "IImpermaxCallee": [
         5172

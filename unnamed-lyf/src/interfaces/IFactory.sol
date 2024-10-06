@@ -9,7 +9,7 @@ interface IFactory {
         address collateral,
         address borrowable0,
         address borrowable1,
-        uint lendingPoolId
+        uint256 lendingPoolId
     );
     event NewAdmin(address oldAdmin, address newAdmin);
 

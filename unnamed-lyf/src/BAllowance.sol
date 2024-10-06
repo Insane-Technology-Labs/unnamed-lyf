@@ -15,7 +15,7 @@ contract BAllowance is PoolToken, BStorage {
         address owner,
         address spender,
         uint256 value
-    ) private {
+    ) internal {
         borrowAllowance[owner][spender] = value;
         emit BorrowApproval(owner, spender, value);
     }
@@ -23,7 +23,7 @@ contract BAllowance is PoolToken, BStorage {
     function borrowApprove(
         address spender,
         uint256 value
-    ) external returns (bool) {
+    ) external returns (bool tf) {
         _borrowApprove(msg.sender, spender, value);
         return true;
     }
@@ -35,37 +35,8 @@ contract BAllowance is PoolToken, BStorage {
     ) internal {
         uint256 _borrowAllowance = borrowAllowance[owner][spender];
         if (spender != owner && _borrowAllowance != type(uint256).max) {
-            require(_borrowAllowance >= value, "Lyf: BORROW_NOT_ALLOWED");
+            require(_borrowAllowance >= value, ErrorHandler.BNA());
             borrowAllowance[owner][spender] = _borrowAllowance - value;
         }
     }
-
-    /*
-    // keccak256("BorrowPermit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-    bytes32 public constant BORROW_PERMIT_TYPEHASH =
-        0xf6d86ed606f871fa1a557ac0ba607adce07767acf53f492fb215a1a4db4aea6f;
-
-    function borrowPermit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external {
-        _checkSignature(
-            owner,
-            spender,
-            value,
-            deadline,
-            v,
-            r,
-            s,
-            BORROW_PERMIT_TYPEHASH
-        );
-        _borrowApprove(owner, spender, value);
-    }
-
-	*/
 }

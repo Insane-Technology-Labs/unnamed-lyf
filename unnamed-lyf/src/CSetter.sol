@@ -8,10 +8,14 @@ import "./interfaces/ILyfPriceOracle.sol";
 import "./ErrorHandler.sol";
 
 contract CSetter is PoolToken, CStorage {
-    uint256 public constant SAFETY_MARGIN_SQRT_MIN = 1.00e18; //safetyMargin: 100%
-    uint256 public constant SAFETY_MARGIN_SQRT_MAX = 1.58113884e18; //safetyMargin: 250%
-    uint256 public constant LIQUIDATION_INCENTIVE_MIN = 1.00e18; //100%
-    uint256 public constant LIQUIDATION_INCENTIVE_MAX = 1.05e18; //105%
+    /// @dev safetyMargin: 100%
+    uint256 public constant SAFETY_MARGIN_SQRT_MIN = 10e17;
+    /// @dev safetyMargin: 250%
+    uint256 public constant SAFETY_MARGIN_SQRT_MAX = 1.58113884e18;
+    /// @dev 100%
+    uint256 public constant LIQUIDATION_INCENTIVE_MIN = 10e17;
+    /// @dev 105%
+    uint256 public constant LIQUIDATION_INCENTIVE_MAX = 105e16;
 
     event NewSafetyMargin(uint256 newSafetyMarginSqrt);
     event NewLiquidationIncentive(uint256 newLiquidationIncentive);
@@ -24,22 +28,24 @@ contract CSetter is PoolToken, CStorage {
         address _borrowable0,
         address _borrowable1
     ) external {
-        require(msg.sender == factory, "Lyf: UNAUTHORIZED"); // sufficient check
+        require(msg.sender == factory, ErrorHandler.UA());
         _setName(_name, _symbol);
         underlying = _underlying;
         borrowable0 = _borrowable0;
         borrowable1 = _borrowable1;
-        tarotPriceOracle = IFactory(factory).tarotPriceOracle();
+        lyfPriceOracle = IFactory(factory).lyfPriceOracle();
     }
 
     function _setSafetyMarginSqrt(
         uint256 newSafetyMarginSqrt
     ) external nonReentrant {
+        /// @dev check if within bounds
         _checkSetting(
             newSafetyMarginSqrt,
             SAFETY_MARGIN_SQRT_MIN,
             SAFETY_MARGIN_SQRT_MAX
         );
+        /// @dev update new safetyMargin value
         safetyMarginSqrt = newSafetyMarginSqrt;
         emit NewSafetyMargin(newSafetyMarginSqrt);
     }
@@ -47,11 +53,13 @@ contract CSetter is PoolToken, CStorage {
     function _setLiquidationIncentive(
         uint256 newLiquidationIncentive
     ) external nonReentrant {
+        /// @dev check if within bounds
         _checkSetting(
             newLiquidationIncentive,
             LIQUIDATION_INCENTIVE_MIN,
             LIQUIDATION_INCENTIVE_MAX
         );
+        /// @dev update new incentive value
         liquidationIncentive = newLiquidationIncentive;
         emit NewLiquidationIncentive(newLiquidationIncentive);
     }
@@ -61,12 +69,8 @@ contract CSetter is PoolToken, CStorage {
         uint256 min,
         uint256 max
     ) internal view {
-        _checkAdmin();
-        require(parameter >= min, "Lyf: INVALID_SETTING");
-        require(parameter <= max, "Lyf: INVALID_SETTING");
-    }
-
-    function _checkAdmin() internal view {
         require(msg.sender == IFactory(factory).admin(), ErrorHandler.UA());
+        require(parameter >= min, ErrorHandler.IS());
+        require(parameter <= max, ErrorHandler.IS());
     }
 }

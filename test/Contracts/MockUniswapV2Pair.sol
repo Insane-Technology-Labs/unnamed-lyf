@@ -1,7 +1,7 @@
-pragma solidity =0.5.16;
+pragma solidity ^0.8.20;
 
 
-import "../../contracts/interfaces/IUniswapV2Pair.sol";
+import "../..//interfaces/IUniswapV2Pair.sol";
 import "../../contracts/libraries/UQ112x112.sol";
 import "./MockERC20.sol";
 
@@ -34,11 +34,11 @@ contract MockUniswapV2Pair is MockERC20 {
 		reserve1 = _reserve1;
 	}
 	
-	function setTotalSupply(uint __totalSupply) external {
+	function setTotalSupply(uint256 __totalSupply) external {
 		_totalSupply = __totalSupply;
 	}
 	
-	function setBalanceHarness(address account, uint amount) external {
+	function setBalanceHarness(address account, uint256 amount) external {
 		_balances[account] = amount;
 	}
 	

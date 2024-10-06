@@ -1,6 +1,6 @@
-pragma solidity =0.5.16;
+pragma solidity ^0.8.20;
 
-import "../../contracts/interfaces/ILyfCallee.sol";
+import "../..//interfaces/ILyfCallee.sol";
 import "./Recipient.sol";
 
 contract LyfCallee is ILyfCallee {
@@ -12,7 +12,7 @@ contract LyfCallee is ILyfCallee {
         underlying = _underlying;
     }
 
-    function tarotBorrow(
+    function lyfBorrow(
         address sender,
         address borrower,
         uint256 borrowAmount,
@@ -25,7 +25,7 @@ contract LyfCallee is ILyfCallee {
         Recipient(recipient).empty(underlying, msg.sender);
     }
 
-    function tarotRedeem(
+    function lyfRedeem(
         address sender,
         uint256 redeemAmount,
         bytes calldata data

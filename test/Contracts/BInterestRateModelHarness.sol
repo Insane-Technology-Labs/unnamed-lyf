@@ -1,4 +1,4 @@
-pragma solidity =0.5.16;
+pragma solidity ^0.8.20;
 
 import "../../contracts/BInterestRateModel.sol";
 
@@ -12,7 +12,7 @@ contract BInterestRateModelHarness is BInterestRateModel {
 		borrowRate = _borrowRate;
 	}
 	
-	function setKinkUtilizationRate(uint _kinkUtilizationRate) public {
+	function setKinkUtilizationRate(uint256 _kinkUtilizationRate) public {
 		kinkUtilizationRate = _kinkUtilizationRate;
 	}
 	
@@ -20,11 +20,11 @@ contract BInterestRateModelHarness is BInterestRateModel {
 		totalBorrows = _totalBorrows;
 	}
 	
-	function setTotalBalance(uint _totalBalance) public {
+	function setTotalBalance(uint256 _totalBalance) public {
 		totalBalance = _totalBalance;
 	}
 	
-	function setAdjustSpeed(uint _adjustSpeed) public {
+	function setAdjustSpeed(uint256 _adjustSpeed) public {
 		adjustSpeed = _adjustSpeed;
 	}
 

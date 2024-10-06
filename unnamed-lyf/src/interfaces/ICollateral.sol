@@ -94,7 +94,7 @@ interface ICollateral {
 
     function borrowable1() external view returns (address);
 
-    function tarotPriceOracle() external view returns (address);
+    function lyfPriceOracle() external view returns (address);
 
     function safetyMarginSqrt() external view returns (uint256);
 

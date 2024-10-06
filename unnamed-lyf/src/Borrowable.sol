@@ -179,7 +179,7 @@ contract Borrowable is
         // optimistically transfer funds
         if (borrowAmount > 0) _safeTransfer(receiver, borrowAmount);
         if (data.length > 0)
-            ILyfCallee(receiver).tarotBorrow(
+            ILyfCallee(receiver).lyfBorrow(
                 msg.sender,
                 borrower,
                 borrowAmount,

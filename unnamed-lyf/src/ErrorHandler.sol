@@ -33,4 +33,6 @@ library ErrorHandler {
     error MAZ();
     /// @dev redeem amount zero
     error RAZ();
+    /// @dev borrow not allowed
+    error BNA();
 }

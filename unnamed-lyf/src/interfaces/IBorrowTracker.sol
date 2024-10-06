@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 interface IBorrowTracker {
     function trackBorrow(
         address borrower,
-        uint borrowBalance,
-        uint borrowIndex
+        uint256 borrowBalance,
+        uint256 borrowIndex
     ) external;
 }
