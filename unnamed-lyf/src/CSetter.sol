@@ -5,6 +5,7 @@ import "./CStorage.sol";
 import "./PoolToken.sol";
 import "./interfaces/IFactory.sol";
 import "./interfaces/ILyfPriceOracle.sol";
+import "./ErrorHandler.sol";
 
 contract CSetter is PoolToken, CStorage {
     uint256 public constant SAFETY_MARGIN_SQRT_MIN = 1.00e18; //safetyMargin: 100%
@@ -66,6 +67,6 @@ contract CSetter is PoolToken, CStorage {
     }
 
     function _checkAdmin() internal view {
-        require(msg.sender == IFactory(factory).admin(), "Lyf: UNAUTHORIZED");
+        require(msg.sender == IFactory(factory).admin(), ErrorHandler.UA());
     }
 }

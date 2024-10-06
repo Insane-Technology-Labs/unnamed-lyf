@@ -11,8 +11,8 @@ import "./interfaces/ILyfCallee.sol";
 import "./interfaces/IUniswapV2Pair.sol";
 import "./libraries/UQ112x112.sol";
 import "./libraries/Math.sol";
+import "./ErrorHandler.sol";
 
-error PriceCalculationError();
 contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
     using UQ112x112 for uint224;
     constructor() public {}
@@ -32,9 +32,9 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
             (currentPrice112x112);
         uint256 adjustment = Math.sqrt(adjustmentSquared * (2 ** 32));
         uint256 currentBorrowable0Price = (uint256(collateralTotalSupply) *
-            (1e18)) / (reserve0 * 2);
+            1e18) / (reserve0 * 2);
         uint256 currentBorrowable1Price = (uint256(collateralTotalSupply) *
-            (1e18)) / (reserve1 * 2);
+            1e18) / (reserve1 * 2);
         price0 = (currentBorrowable0Price * (adjustment)) / (2 ** 32);
         price1 = (currentBorrowable1Price * (2 ** 32)) / (adjustment);
         /*
@@ -42,8 +42,8 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
          * reserve0 / reserve1 is close to 2**112 or 1/2**112
          * We're going to prevent users from using pairs at risk from the UI
          */
-        require(price0 > 100, "Lyf: PRICE_CALCULATION_ERROR");
-        require(price1 > 100, "Lyf: PRICE_CALCULATION_ERROR");
+        require(price0 > 100, ErrorHandler.PriceCalculationError());
+        require(price1 > 100, ErrorHandler.PriceCalculationError());
     }
     // returns liquidity in  collateral's underlying
     function _calculateLiquidity(
@@ -53,28 +53,28 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
     ) internal returns (uint256 liquidity, uint256 shortfall) {
         uint256 _safetyMarginSqrt = safetyMarginSqrt;
         (uint256 price0, uint256 price1) = getPrices();
-        uint256 a = (amount0 * (price0)) / (1e18);
-        uint256 b = (amount1 * (price1)) / (1e18);
+        uint256 a = (amount0 * price0) / 1e18;
+        uint256 b = (amount1 * price1) / 1e18;
         if (a < b) (a, b) = (b, a);
-        a = (a * (_safetyMarginSqrt)) / (1e18);
-        b = (b * (1e18)) / (_safetyMarginSqrt);
-        uint256 collateralNeeded = a + ((b) * (liquidationIncentive)) / (1e18);
-        if (amountCollateral >= collateralNeeded) {
-            return (amountCollateral - collateralNeeded, 0);
-        } else {
-            return (0, collateralNeeded - amountCollateral);
-        }
+        a = (a * _safetyMarginSqrt) / 1e18;
+        b = (b * 1e18) / _safetyMarginSqrt;
+        uint256 collateralNeeded = a + ((b * liquidationIncentive) / 1e18);
+        return (
+            amountCollateral >= collateralNeeded
+                ? (amountCollateral - collateralNeeded, 0)
+                : (0, collateralNeeded - amountCollateral)
+        );
     }
     /*** ERC20 ***/
     function _transfer(address from, address to, uint256 value) internal {
-        require(tokensUnlocked(from, value), "Lyf: INSUFFICIENT_LIQUIDITY");
+        require(tokensUnlocked(from, value), ErrorHandler.IL());
         super._transfer(from, to, value);
     }
     function tokensUnlocked(address from, uint256 value) public returns (bool) {
-        uint256 _balance = balanceOf[from];
+        uint256 _balance = this.balanceOf(from);
         if (value > _balance) return false;
         uint256 finalBalance = _balance - value;
-        uint256 amountCollateral = (finalBalance * (exchangeRate())) / (1e18);
+        uint256 amountCollateral = (finalBalance * exchangeRate()) / 1e18;
         uint256 amount0 = IBorrowable(borrowable0).borrowBalance(from);
         uint256 amount1 = IBorrowable(borrowable1).borrowBalance(from);
         (, uint256 shortfall) = _calculateLiquidity(
@@ -90,36 +90,44 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
         uint256 amount0,
         uint256 amount1
     ) public returns (uint256 liquidity, uint256 shortfall) {
-        if (amount0 == uint256(-1))
+        if (amount0 == type(uint256).max)
             amount0 = IBorrowable(borrowable0).borrowBalance(borrower);
-        if (amount1 == uint256(-1))
+        if (amount1 == type(uint256).max)
             amount1 = IBorrowable(borrowable1).borrowBalance(borrower);
-        uint256 amountCollateral = (balanceOf[borrower] * (exchangeRate())) /
-            (1e18);
+        uint256 amountCollateral = (this.balanceOf(borrower) * exchangeRate()) /
+            1e18;
         return _calculateLiquidity(amountCollateral, amount0, amount1);
     }
     function accountLiquidity(
         address borrower
     ) public returns (uint256 liquidity, uint256 shortfall) {
-        return accountLiquidityAmounts(borrower, uint256(-1), uint256(-1));
+        return
+            accountLiquidityAmounts(
+                borrower,
+                type(uint256).max,
+                type(uint256).max
+            );
     }
     function canBorrow(
         address borrower,
         address borrowable,
         uint256 accountBorrows
     ) public returns (bool) {
-        address _borrowable0 = borrowable0;
-        address _borrowable1 = borrowable1;
+        (address _borrowable0, address _borrowable1) = (
+            borrowable0,
+            borrowable1
+        );
+
         require(
             borrowable == _borrowable0 || borrowable == _borrowable1,
-            "Lyf: INVALID_BORROWABLE"
+            ErrorHandler.IB()
         );
         uint256 amount0 = borrowable == _borrowable0
             ? accountBorrows
-            : uint256(-1);
+            : type(uint256).max;
         uint256 amount1 = borrowable == _borrowable1
             ? accountBorrows
-            : uint256(-1);
+            : type(uint256).max;
         (, uint256 shortfall) = accountLiquidityAmounts(
             borrower,
             amount0,
@@ -135,20 +143,20 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
     ) external returns (uint256 seizeTokens) {
         require(
             msg.sender == borrowable0 || msg.sender == borrowable1,
-            "Lyf: UNAUTHORIZED"
+            ErrorHandler.UA()
         );
         (, uint256 shortfall) = accountLiquidity(borrower);
-        require(shortfall > 0, "Lyf: INSUFFICIENT_SHORTFALL");
+        require(shortfall > 0, ErrorHandler.ISF());
         uint256 price;
         if (msg.sender == borrowable0) (price, ) = getPrices();
         else (, price) = getPrices();
         seizeTokens =
-            (((repayAmount * (liquidationIncentive)) / (1e18)) * (price)) /
-            (exchangeRate());
-        balanceOf[borrower] =
-            balanceOf[borrower] -
-            (seizeTokens, "Lyf: LIQUIDATING_TOO_MUCH");
-        balanceOf[liquidator] = balanceOf[liquidator] + (seizeTokens);
+            (((repayAmount * liquidationIncentive) / 1e18) * price) /
+            exchangeRate();
+        this.balanceOf[borrower] =
+            this.balanceOf(borrower) -
+            (seizeTokens, ErrorHandler.LTM());
+        this.balanceOf(liquidator) = this.balanceOf(liquidator) + (seizeTokens);
         emit Transfer(borrower, liquidator, seizeTokens);
     }
     // this low-level function should be called from another contract
@@ -157,19 +165,15 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
         uint256 redeemAmount,
         bytes calldata data
     ) external nonReentrant update {
-        require(redeemAmount <= totalBalance, "Lyf: INSUFFICIENT_CASH");
+        require(redeemAmount <= totalBalance, ErrorHandler.IC());
         // optimistically transfer funds
         _safeTransfer(redeemer, redeemAmount);
         if (data.length > 0)
             ILyfCallee(redeemer).lyfRedeem(msg.sender, redeemAmount, data);
-        uint256 redeemTokens = balanceOf[address(this)];
-        uint256 declaredRedeemTokens = (redeemAmount * (1e18)) /
-            (exchangeRate()) +
-            (1); // rounded up
-        require(
-            redeemTokens >= declaredRedeemTokens,
-            "Lyf: INSUFFICIENT_REDEEM_TOKENS"
-        );
+        uint256 redeemTokens = this.balanceOf(address(this));
+        uint256 declaredRedeemTokens = ((redeemAmount * 1e18) /
+            (exchangeRate())) + 1; // rounded up
+        require(redeemTokens >= declaredRedeemTokens, ErrorHandler.IRT());
         _burn(address(this), redeemTokens);
         emit Redeem(msg.sender, redeemer, redeemAmount, redeemTokens);
     }

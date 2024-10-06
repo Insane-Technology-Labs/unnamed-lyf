@@ -5,9 +5,9 @@ import "./LyfERC20.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IPoolToken.sol";
 import "./libraries/SafeMath.sol";
+import "./ErrorHandler.sol";
 
 contract PoolToken is IPoolToken, LyfERC20 {
-    uint256 internal constant initialExchangeRate = 1e18;
     address public underlying;
     address public factory;
     uint256 public totalBalance;
@@ -43,10 +43,11 @@ contract PoolToken is IPoolToken, LyfERC20 {
     }
 
     function exchangeRate() public returns (uint256) {
-        uint256 _totalSupply = totalSupply; // gas savings
-        uint256 _totalBalance = totalBalance; // gas savings
-        if (_totalSupply == 0 || _totalBalance == 0) return initialExchangeRate;
-        return (_totalBalance * (1e18)) / (_totalSupply);
+        return (
+            (totalSupply == 0 || totalBalance == 0)
+                ? 1e18
+                : (totalBalance * (1e18)) / (totalSupply)
+        );
     }
 
     // this low-level function should be called from another contract
@@ -59,7 +60,7 @@ contract PoolToken is IPoolToken, LyfERC20 {
 
         if (totalSupply == 0) {
             // permanently lock the first MINIMUM_LIQUIDITY tokens
-            mintTokens = mintTokens - (MINIMUM_LIQUIDITY);
+            mintTokens -= (MINIMUM_LIQUIDITY);
             _mint(address(0), MINIMUM_LIQUIDITY);
         }
         require(mintTokens > 0, "Lyf: MINT_AMOUNT_ZERO");
@@ -71,13 +72,13 @@ contract PoolToken is IPoolToken, LyfERC20 {
     function redeem(
         address redeemer
     ) external nonReentrant update returns (uint256 redeemAmount) {
-        uint256 redeemTokens = balanceOf[address(this)];
+        uint256 redeemTokens = this.balanceOf(address(this));
         redeemAmount = (redeemTokens * (exchangeRate())) / (1e18);
 
         require(redeemAmount > 0, "Lyf: REDEEM_AMOUNT_ZERO");
         require(redeemAmount <= totalBalance, "Lyf: INSUFFICIENT_CASH");
         _burn(address(this), redeemTokens);
-        _safeTransfer(redeemer, redeemAmount);
+        this.transfer(redeemer, redeemAmount);
         emit Redeem(msg.sender, redeemer, redeemAmount, redeemTokens);
     }
 

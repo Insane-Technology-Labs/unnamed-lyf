@@ -9,6 +9,7 @@ import "./interfaces/ICollateral.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IUniswapV2Pair.sol";
 import "./interfaces/ILyfPriceOracle.sol";
+import "./ErrorHandler.sol";
 
 contract Factory is IFactory {
     address public admin;
@@ -44,32 +45,19 @@ contract Factory is IFactory {
         address borrowable1,
         uint256 lendingPoolId
     );
-    event NewPendingAdmin(address oldPendingAdmin, address newPendingAdmin);
     event NewAdmin(address oldAdmin, address newAdmin);
-    event NewReservesPendingAdmin(
-        address oldReservesPendingAdmin,
-        address newReservesPendingAdmin
-    );
-    event NewReservesAdmin(address oldReservesAdmin, address newReservesAdmin);
-    event NewReservesManager(
-        address oldReservesManager,
-        address newReservesManager
-    );
 
     constructor(
         address _admin,
-        address _reservesAdmin,
         IBDeployer _bDeployer,
         ICDeployer _cDeployer,
         ILyfPriceOracle _lyfPriceOracle
     ) public {
         admin = _admin;
-        reservesAdmin = _reservesAdmin;
         bDeployer = _bDeployer;
         cDeployer = _cDeployer;
         lyfPriceOracle = _lyfPriceOracle;
         emit NewAdmin(address(0), _admin);
-        emit NewReservesAdmin(address(0), _reservesAdmin);
     }
 
     function _getTokens(
@@ -97,7 +85,7 @@ contract Factory is IFactory {
         _getTokens(uniswapV2Pair);
         require(
             getLendingPool[uniswapV2Pair].collateral == address(0),
-            "Lyf: ALREADY_EXISTS"
+            ErrorHandler.AE()
         );
         collateral = cDeployer.deployCollateral(uniswapV2Pair);
         ICollateral(collateral)._setFactory();
@@ -105,27 +93,23 @@ contract Factory is IFactory {
         getLendingPool[uniswapV2Pair].collateral = collateral;
     }
 
-    function createBorrowable0(
+    function createBorrowables(
         address uniswapV2Pair
-    ) external returns (address borrowable0) {
+    ) external returns (address borrowable0, address borrowable1) {
         _getTokens(uniswapV2Pair);
         require(
             getLendingPool[uniswapV2Pair].borrowable0 == address(0),
-            "Lyf: ALREADY_EXISTS"
+            ErrorHandler.AE()
         );
         borrowable0 = bDeployer.deployBorrowable(uniswapV2Pair, 0);
         IBorrowable(borrowable0)._setFactory();
         _createLendingPool(uniswapV2Pair);
         getLendingPool[uniswapV2Pair].borrowable0 = borrowable0;
-    }
 
-    function createBorrowable1(
-        address uniswapV2Pair
-    ) external returns (address borrowable1) {
         _getTokens(uniswapV2Pair);
         require(
             getLendingPool[uniswapV2Pair].borrowable1 == address(0),
-            "Lyf: ALREADY_EXISTS"
+            ErrorHandler.AE()
         );
         borrowable1 = bDeployer.deployBorrowable(uniswapV2Pair, 1);
         IBorrowable(borrowable1)._setFactory();
@@ -136,20 +120,11 @@ contract Factory is IFactory {
     function initializeLendingPool(address uniswapV2Pair) external {
         (address token0, address token1) = _getTokens(uniswapV2Pair);
         LendingPool memory lPool = getLendingPool[uniswapV2Pair];
-        require(!lPool.initialized, "Lyf: ALREADY_INITIALIZED");
+        require(!lPool.initialized, ErrorHandler.AI());
 
-        require(
-            lPool.collateral != address(0),
-            "Lyf: COLLATERALIZABLE_NOT_CREATED"
-        );
-        require(
-            lPool.borrowable0 != address(0),
-            "Lyf: BORROWABLE0_NOT_CREATED"
-        );
-        require(
-            lPool.borrowable1 != address(0),
-            "Lyf: BORROWABLE1_NOT_CREATED"
-        );
+        require(lPool.collateral != address(0), ErrorHandler.CNC());
+        require(lPool.borrowable0 != address(0), ErrorHandler.BNC());
+        require(lPool.borrowable1 != address(0), ErrorHandler.BNC());
 
         (, , , , , bool oracleInitialized) = lyfPriceOracle.getPair(
             uniswapV2Pair
@@ -188,49 +163,10 @@ contract Factory is IFactory {
         );
     }
 
-    function _setPendingAdmin(address newPendingAdmin) external {
-        require(msg.sender == admin, "Lyf: UNAUTHORIZED");
-        address oldPendingAdmin = pendingAdmin;
-        pendingAdmin = newPendingAdmin;
-        emit NewPendingAdmin(oldPendingAdmin, newPendingAdmin);
-    }
-
-    function _acceptAdmin() external {
-        require(msg.sender == pendingAdmin, "Lyf: UNAUTHORIZED");
+    function assignAdmin(address _newAdmin) external {
+        require(msg.sender == admin, ErrorHandler.UA());
         address oldAdmin = admin;
-        address oldPendingAdmin = pendingAdmin;
-        admin = pendingAdmin;
-        pendingAdmin = address(0);
+        admin = _newAdmin;
         emit NewAdmin(oldAdmin, admin);
-        emit NewPendingAdmin(oldPendingAdmin, address(0));
-    }
-
-    function _setReservesPendingAdmin(
-        address newReservesPendingAdmin
-    ) external {
-        require(msg.sender == reservesAdmin, "Lyf: UNAUTHORIZED");
-        address oldReservesPendingAdmin = reservesPendingAdmin;
-        reservesPendingAdmin = newReservesPendingAdmin;
-        emit NewReservesPendingAdmin(
-            oldReservesPendingAdmin,
-            newReservesPendingAdmin
-        );
-    }
-
-    function _acceptReservesAdmin() external {
-        require(msg.sender == reservesPendingAdmin, "Lyf: UNAUTHORIZED");
-        address oldReservesAdmin = reservesAdmin;
-        address oldReservesPendingAdmin = reservesPendingAdmin;
-        reservesAdmin = reservesPendingAdmin;
-        reservesPendingAdmin = address(0);
-        emit NewReservesAdmin(oldReservesAdmin, reservesAdmin);
-        emit NewReservesPendingAdmin(oldReservesPendingAdmin, address(0));
-    }
-
-    function _setReservesManager(address newReservesManager) external {
-        require(msg.sender == reservesAdmin, "Lyf: UNAUTHORIZED");
-        address oldReservesManager = reservesManager;
-        reservesManager = newReservesManager;
-        emit NewReservesManager(oldReservesManager, newReservesManager);
     }
 }

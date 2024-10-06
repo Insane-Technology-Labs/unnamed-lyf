@@ -34,7 +34,7 @@ contract BAllowance is PoolToken, BStorage {
         uint256 value
     ) internal {
         uint256 _borrowAllowance = borrowAllowance[owner][spender];
-        if (spender != owner && _borrowAllowance != uint256(-1)) {
+        if (spender != owner && _borrowAllowance != type(uint256).max) {
             require(_borrowAllowance >= value, "Lyf: BORROW_NOT_ALLOWED");
             borrowAllowance[owner][spender] = _borrowAllowance - value;
         }
