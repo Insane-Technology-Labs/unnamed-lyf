@@ -1,12 +1,11 @@
 pragma solidity =0.5.16;
 
-import "../../contracts/libraries/SafeMath.sol";
+
 import "../../contracts/interfaces/IUniswapV2Pair.sol";
 import "../../contracts/libraries/UQ112x112.sol";
 import "./MockERC20.sol";
 
 contract MockUniswapV2Pair is MockERC20 {
-	using SafeMath for uint256;
 	using UQ112x112 for uint224;
 	
 	address public token0;

@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "./LyfERC20.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IPoolToken.sol";
-import "./libraries/SafeMath.sol";
 import "./ErrorHandler.sol";
 
 contract PoolToken is IPoolToken, LyfERC20 {

@@ -1,10 +1,10 @@
 pragma solidity =0.5.16;
 
 import "../../contracts/interfaces/IBorrowTracker.sol";
-import "../../contracts/libraries/SafeMath.sol";
+
 
 contract MockBorrowTracker is IBorrowTracker {
-	using SafeMath for uint;
+
 	
 	constructor () public {}
 	

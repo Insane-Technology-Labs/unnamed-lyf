@@ -35,8 +35,8 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
             1e18) / (reserve0 * 2);
         uint256 currentBorrowable1Price = (uint256(collateralTotalSupply) *
             1e18) / (reserve1 * 2);
-        price0 = (currentBorrowable0Price * (adjustment)) / 2 ** 32;
-        price1 = (currentBorrowable1Price * 2 ** 32) / (adjustment);
+        price0 = (currentBorrowable0Price * adjustment) / 2 ** 32;
+        price1 = (currentBorrowable1Price * (2 ** 32)) / adjustment;
         /*
          * Price calculation errors may happen in some edge pairs where
          * reserve0 / reserve1 is close to 2**112 or 1/2**112
@@ -113,19 +113,14 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
         address borrowable,
         uint256 accountBorrows
     ) public returns (bool) {
-        (address _borrowable0, address _borrowable1) = (
-            borrowable0,
-            borrowable1
-        );
-
         require(
-            borrowable == _borrowable0 || borrowable == _borrowable1,
+            borrowable == borrowable0 || borrowable == borrowable1,
             ErrorHandler.IB()
         );
-        uint256 amount0 = borrowable == _borrowable0
+        uint256 amount0 = borrowable == borrowable0
             ? accountBorrows
             : type(uint256).max;
-        uint256 amount1 = borrowable == _borrowable1
+        uint256 amount1 = borrowable == borrowable1
             ? accountBorrows
             : type(uint256).max;
         (, uint256 shortfall) = accountLiquidityAmounts(
@@ -135,7 +130,7 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
         );
         return shortfall == 0;
     }
-    // this function must be called from borrowable0 or borrowable1
+    /// @dev this function must be called from borrowable0 or borrowable1
     function seize(
         address liquidator,
         address borrower,
@@ -147,16 +142,16 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
         );
         (, uint256 shortfall) = accountLiquidity(borrower);
         require(shortfall > 0, ErrorHandler.ISF());
-        uint256 price;
-        if (msg.sender == borrowable0) (price, ) = getPrices();
-        else (, price) = getPrices();
+        /// @dev if borrowable0 fetch first slot, else fetch second
+        uint256 price = msg.sender == borrowable0
+            ? (price, ) = getPrices()
+            : (, price) = getPrices();
         seizeTokens =
             (((repayAmount * liquidationIncentive) / 1e18) * price) /
             exchangeRate();
-        this.balanceOf[borrower] =
-            this.balanceOf(borrower) -
-            (seizeTokens, ErrorHandler.LTM());
-        this.balanceOf(liquidator) = this.balanceOf(liquidator) + (seizeTokens);
+        /// @dev check to ensure not seizing more than balance
+        require(seizeTokens <= this.balanceOf(borrower), ErrorHandler.LTM());
+        this._transfer(borrower, liquidator, seizeTokens);
         emit Transfer(borrower, liquidator, seizeTokens);
     }
     // this low-level function should be called from another contract
