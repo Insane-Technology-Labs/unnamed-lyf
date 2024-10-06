@@ -45,7 +45,7 @@ contract PoolToken is IPoolToken, LyfERC20 {
         return (
             (totalSupply == 0 || totalBalance == 0)
                 ? 1e18
-                : (totalBalance * (1e18)) / (totalSupply)
+                : ((totalBalance * 1e18) / (totalSupply))
         );
     }
 
@@ -54,6 +54,7 @@ contract PoolToken is IPoolToken, LyfERC20 {
         address minter
     ) external nonReentrant update returns (uint256 mintTokens) {
         uint256 balance = IERC20(underlying).balanceOf(address(this));
+        /// @dev difference in underlying balance before updating
         uint256 mintAmount = balance - (totalBalance);
         mintTokens = (mintAmount * 1e18) / exchangeRate();
 
@@ -81,34 +82,18 @@ contract PoolToken is IPoolToken, LyfERC20 {
         emit Redeem(msg.sender, redeemer, redeemAmount, redeemTokens);
     }
 
-    // force real balance to match totalBalance
+    /// @dev force real balance to match totalBalance
     function skim(address to) external nonReentrant {
-        _safeTransfer(
+        IERC20(underlying).transfer(
             to,
-            IERC20(underlying).balanceOf(address(this)) - (totalBalance)
+            IERC20(underlying).balanceOf(address(this)) - totalBalance
         );
     }
 
-    // force totalBalance to match real balance
+    /// @dev force totalBalance to match real balance
     function sync() external nonReentrant update {}
 
-    /*** Utilities ***/
-
-    // same safe transfer function used by UniSwapV2 (with fixed underlying)
-    bytes4 private constant SELECTOR =
-        bytes4(keccak256(bytes("transfer(address,uint256)")));
-
-    function _safeTransfer(address to, uint256 amount) internal {
-        (bool success, bytes memory data) = underlying.call(
-            abi.encodeWithSelector(SELECTOR, to, amount)
-        );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "Lyf: TRANSFER_FAILED"
-        );
-    }
-
-    // prevents a contract from calling itself, directly or indirectly.
+    /// @dev prevents a contract from calling itself, directly or indirectly.
     bool internal _notEntered = true;
     modifier nonReentrant() {
         require(_notEntered, "Lyf: REENTERED");
@@ -117,7 +102,8 @@ contract PoolToken is IPoolToken, LyfERC20 {
         _notEntered = true;
     }
 
-    // update totalBalance with current balance
+    /// @dev update totalBalance with current balance
+    /// @dev called at the END of the function call
     modifier update() {
         _;
         _update();

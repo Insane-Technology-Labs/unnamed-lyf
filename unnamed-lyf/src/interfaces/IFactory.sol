@@ -33,7 +33,7 @@ interface IFactory {
     function allLendingPools(
         uint256
     ) external view returns (address uniswapV2Pair);
-	
+
     function allLendingPoolsLength() external view returns (uint256 length);
 
     /// @notice creates the LP collateral for the pair

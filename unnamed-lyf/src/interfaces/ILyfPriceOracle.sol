@@ -11,7 +11,9 @@ interface ILyfPriceOracle {
 
     function MIN_T() external pure returns (uint32);
 
-    function getPair(address uniswapV2Pair)
+    function getPair(
+        address uniswapV2Pair
+    )
         external
         view
         returns (
@@ -25,7 +27,7 @@ interface ILyfPriceOracle {
 
     function initialize(address uniswapV2Pair) external;
 
-    function getResult(address uniswapV2Pair)
-        external
-        returns (uint224 price, uint32 T);
+    function getResult(
+        address uniswapV2Pair
+    ) external returns (uint224 price, uint32 T);
 }

@@ -1,59 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.20;
+import "./interfaces/IERC20.sol";
 
-interface IBorrowable {
-    /*** Lyf ERC20 ***/
-
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
-
-    function name() external pure returns (string memory);
-
-    function symbol() external pure returns (string memory);
-
-    function decimals() external pure returns (uint8);
-
-    function totalSupply() external view returns (uint256);
-
-    function balanceOf(address owner) external view returns (uint256);
-
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
-
-    function approve(address spender, uint256 value) external returns (bool);
-
-    function transfer(address to, uint256 value) external returns (bool);
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) external returns (bool);
-
-    function DOMAIN_SEPARATOR() external view returns (bytes32);
-
-    function PERMIT_TYPEHASH() external pure returns (bytes32);
-
-    function nonces(address owner) external view returns (uint256);
-
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
-
-    /*** Pool Token ***/
-
+interface IBorrowable is IERC20 {
     event Mint(
         address indexed sender,
         address indexed minter,
@@ -68,22 +17,32 @@ interface IBorrowable {
     );
     event Sync(uint256 totalBalance);
 
+    /// @notice address of the underlying borrowable token
     function underlying() external view returns (address);
 
+    /// @notice factory address
     function factory() external view returns (address);
 
     function totalBalance() external view returns (uint256);
 
+    /// @notice minimum liq that is burned
     function MINIMUM_LIQUIDITY() external pure returns (uint256);
 
+    /// @notice exchange rate of the borrowable
     function exchangeRate() external returns (uint256);
 
     function mint(address minter) external returns (uint256 mintTokens);
 
+    /// @notice redeem tokens
+    /// @param redeemer address that is redeeming
+    /// @return redeemAmount the amount of tokens redeemed
     function redeem(address redeemer) external returns (uint256 redeemAmount);
 
+    /// @notice forces real balance to match total
+    /// @param to address to send skimmed amounts to
     function skim(address to) external;
 
+    /// @notice forces total to match real balance
     function sync() external;
 
     function _setFactory() external;
@@ -118,40 +77,37 @@ interface IBorrowable {
 
     function BORROW_FEE() external pure returns (uint256);
 
+    /// @notice address of the collateral
     function collateral() external view returns (address);
 
+    /// @notice reserve factor (LTVish)
     function reserveFactor() external view returns (uint256);
 
     function exchangeRateLast() external view returns (uint256);
 
     function borrowIndex() external view returns (uint256);
 
+    /// @notice total borrows
     function totalBorrows() external view returns (uint256);
 
-    function borrowAllowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    /// @notice user borrow allowances
+    function borrowAllowance(
+        address owner,
+        address spender
+    ) external view returns (uint256);
 
-    function borrowBalance(address borrower) external view returns (uint256);
+    /// @notice borrow balance of a specific borrower
+    /// @param borrower address of the borrower
+    /// @return bb borrow balance
+    function borrowBalance(address borrower) external view returns (uint256 bb);
 
     function borrowTracker() external view returns (address);
 
-    function BORROW_PERMIT_TYPEHASH() external pure returns (bytes32);
-
-    function borrowApprove(address spender, uint256 value)
-        external
-        returns (bool);
-
-    function borrowPermit(
-        address owner,
+    /// @notice approve borrowing
+    function borrowApprove(
         address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
+        uint256 value
+    ) external returns (bool);
 
     function borrow(
         address borrower,
@@ -160,9 +116,14 @@ interface IBorrowable {
         bytes calldata data
     ) external;
 
-    function liquidate(address borrower, address liquidator)
-        external
-        returns (uint256 seizeTokens);
+    /// @notice liquidate a position of a borrower
+    /// @param borrower address of borrower
+    /// @param liquidator where the incentives should be sent
+    /// @return seizeTokens tokens seized
+    function liquidate(
+        address borrower,
+        address liquidator
+    ) external returns (uint256 seizeTokens);
 
     function trackBorrow(address borrower) external;
 
@@ -180,20 +141,27 @@ interface IBorrowable {
 
     function KINK_BORROW_RATE_MIN() external pure returns (uint256);
 
+    /// @notice multiplier added to kink
     function KINK_MULTIPLIER() external pure returns (uint256);
 
     function borrowRate() external view returns (uint256);
 
+    /// @notice borrow rate for kink UR
     function kinkBorrowRate() external view returns (uint256);
 
+    /// @notice util rate at which the model exponentiates
     function kinkUtilizationRate() external view returns (uint256);
 
+    /// @notice speed of interest adjustment
     function adjustSpeed() external view returns (uint256);
 
+    /// @notice last time rate updated
     function rateUpdateTimestamp() external view returns (uint32);
 
+    /// @notice timestamp of accrual
     function accrualTimestamp() external view returns (uint32);
 
+    /// @notice force push accrue interest
     function accrueInterest() external;
 
     /*** Borrowable Setter ***/
@@ -220,10 +188,12 @@ interface IBorrowable {
         address _collateral
     ) external;
 
+    /// @notice adjust the reserve factor for the lending pool
     function _setReserveFactor(uint256 newReserveFactor) external;
 
     function _setKinkUtilizationRate(uint256 newKinkUtilizationRate) external;
 
+    /// @notice edits the speed of adjustment
     function _setAdjustSpeed(uint256 newAdjustSpeed) external;
 
     function _setBorrowTracker(address newBorrowTracker) external;
