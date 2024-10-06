@@ -1,12 +1,12 @@
 const {
 	Borrowable,
 	Collateral,
-	ImpermaxCallee,
+	LyfCallee,
 	ReentrantCallee,
 	Recipient,
 	makeFactory,
 	makeUniswapV2Pair,
-} = require('./Utils/Impermax');
+} = require('./Utils/Lyf');
 const {
 	expectAlmostEqualMantissa,
 	expectRevert,
@@ -20,9 +20,14 @@ const {
 	address,
 	encode,
 } = require('./Utils/Ethereum');
-const { keccak256, toUtf8Bytes } = require('ethers/utils');
 
 const oneMantissa = (new BN(10)).pow(new BN(18));
+const SAFETY_MARGIN_MIN = bnMantissa(Math.sqrt(1.5));
+const SAFETY_MARGIN_TEST = bnMantissa(Math.sqrt(1.75));
+const SAFETY_MARGIN_MAX = bnMantissa(Math.sqrt(2.5));
+const LIQUIDATION_INCENTIVE_MIN = bnMantissa(1.01);
+const LIQUIDATION_INCENTIVE_TEST = bnMantissa(1.03);
+const LIQUIDATION_INCENTIVE_MAX = bnMantissa(1.05);
 
 const TEST_AMOUNT = oneMantissa.mul(new BN(200));
 const MAX_UINT_256 = (new BN(2)).pow(new BN(256)).sub(new BN(1));
@@ -40,13 +45,10 @@ contract('Collateral', function (accounts) {
 	let admin = accounts[2];		
 	let borrower = accounts[3];		
 	let liquidator = accounts[4];		
-	let reservesAdmin = accounts[5];		
-	let reservesManager = accounts[6];		
 	let factory;
 		
 	before(async () => {
-		factory = await makeFactory({admin, reservesAdmin});
-		await factory._setReservesManager(reservesManager, {from: reservesAdmin});
+		factory = await makeFactory({admin});
 	});
 
 	describe('getPrices', () => {
@@ -56,7 +58,7 @@ contract('Collateral', function (accounts) {
 		before(async () => {
 			collateral = await Collateral.new();
 			underlying = await makeUniswapV2Pair();
-			await collateral.setPriceOracle(factory.obj.simpleUniswapOracle.address);
+			await collateral.setPriceOracle(factory.obj.tarotPriceOracle.address);
 			await collateral.setUnderlyingHarness(underlying.address);
 		});
 		
@@ -74,7 +76,7 @@ contract('Collateral', function (accounts) {
 				const adjustedReserve1 = currentReserve1 * adjustement;
 				expectAlmostEqualMantissa(bnMantissa(adjustedReserve1 / adjustedReserve0), bnMantissa(priceOracle));
 				
-				await factory.obj.simpleUniswapOracle.setPrice(underlying.address, uq112(priceOracle));
+				await factory.obj.tarotPriceOracle.setPrice(underlying.address, uq112(priceOracle));
 				await underlying.setTotalSupply(bnMantissa(totalSupply));
 				await underlying.setReserves(bnMantissa(currentReserve0), bnMantissa(currentReserve1));
 				const {price0, price1} = await collateral.getPrices.call();
@@ -89,37 +91,37 @@ contract('Collateral', function (accounts) {
 			reserve0 = "1";
 			reserve1 = "200000000000000000000000000000000";
 			totalSupply = "14142000000000000";
-			await factory.obj.simpleUniswapOracle.setPrice(underlying.address, priceUQ112);
+			await factory.obj.tarotPriceOracle.setPrice(underlying.address, priceUQ112);
 			await underlying.setTotalSupply(totalSupply);
 			await underlying.setReserves(reserve0, reserve1);
-			await expectRevert(collateral.getPrices(), 'Impermax: PRICE_CALCULATION_ERROR');
+			await expectRevert(collateral.getPrices(), 'Lyf: PRICE_CALCULATION_ERROR');
 			
 			priceUQ112 = "26"; //0.5e-32
 			reserve0 = "200000000000000000000000000000000";
 			reserve1 = "1";
 			totalSupply = "14142000000000000";
-			await factory.obj.simpleUniswapOracle.setPrice(underlying.address, priceUQ112);
+			await factory.obj.tarotPriceOracle.setPrice(underlying.address, priceUQ112);
 			await underlying.setTotalSupply(totalSupply);
 			await underlying.setReserves(reserve0, reserve1);
-			await expectRevert(collateral.getPrices(), 'Impermax: PRICE_CALCULATION_ERROR');
+			await expectRevert(collateral.getPrices(), 'Lyf: PRICE_CALCULATION_ERROR');
 			
 			priceUQ112 = uq112(1); //1
 			reserve0 = "14142000000000000";
 			reserve1 = "14142000000000000";
 			totalSupply = "1";
-			await factory.obj.simpleUniswapOracle.setPrice(underlying.address, priceUQ112);
+			await factory.obj.tarotPriceOracle.setPrice(underlying.address, priceUQ112);
 			await underlying.setTotalSupply(totalSupply);
 			await underlying.setReserves(reserve0, reserve1);
-			await expectRevert(collateral.getPrices(), 'Impermax: PRICE_CALCULATION_ERROR');			
+			await expectRevert(collateral.getPrices(), 'Lyf: PRICE_CALCULATION_ERROR');			
 		});
 	});
 	
 	[
-		{safetyMargin: 2.50, liquidationIncentive: 1.01, liquidationFee: 0.08, amounts: [280, 100, 100], prices: [1, 1]},
-		{safetyMargin: 2.25, liquidationIncentive: 1.02, liquidationFee: 0.07, amounts: [3060, 0, 2000], prices: [1, 1]},
-		{safetyMargin: 2.00, liquidationIncentive: 1.03, liquidationFee: 0.00, amounts: [1000, 111, 1.546], prices: [11.3, 0.56]},
-		{safetyMargin: 1.75, liquidationIncentive: 1.04, liquidationFee: 0.03, amounts: [11.3, 175.6, 200], prices: [0.0059, 0.034]},
-		{safetyMargin: 1.50, liquidationIncentive: 1.05, liquidationFee: 0.02, amounts: [2154546, 1, 1.12e12], prices: [1154546, 0.0000008661]},
+		{safetyMargin: 2.50, liquidationIncentive: 1.01, amounts: [280, 100, 100], prices: [1, 1]},
+		{safetyMargin: 2.25, liquidationIncentive: 1.02, amounts: [3060, 0, 2000], prices: [1, 1]},
+		{safetyMargin: 2.00, liquidationIncentive: 1.03, amounts: [1000, 111, 1.546], prices: [11.3, 0.56]},
+		{safetyMargin: 1.75, liquidationIncentive: 1.04, amounts: [11.3, 175.6, 200], prices: [0.0059, 0.034]},
+		{safetyMargin: 1.50, liquidationIncentive: 1.05, amounts: [2154546, 1, 1.12e12], prices: [1154546, 0.0000008661]},
 	].forEach((testCase) => {
 		describe(`Collateral tests for ${JSON.stringify(testCase)}`, () => {
 			let collateral;
@@ -127,23 +129,22 @@ contract('Collateral', function (accounts) {
 			let borrowable1;
 			const exchangeRate = 2;
 			
-			const {safetyMargin, liquidationIncentive, liquidationFee, amounts, prices} = testCase;
+			const {safetyMargin, liquidationIncentive, amounts, prices} = testCase;
 			const collateralValue = amounts[0];
-			const liquidationPenalty = liquidationIncentive + liquidationFee;
 			
 			//Case A: price0 / price1 increase by safetyMargin
 			const price0FinalA = prices[0] * Math.sqrt(safetyMargin);
 			const price1FinalA = prices[1] / Math.sqrt(safetyMargin);
-			const collateralNeededA = (price0FinalA * amounts[1] + price1FinalA * amounts[2]) * liquidationPenalty;
-			const maxBorrowable0A = (collateralValue / liquidationPenalty - price1FinalA * amounts[2]) / price0FinalA;
-			const maxBorrowable1A = (collateralValue / liquidationPenalty - price0FinalA * amounts[1]) / price1FinalA;
+			const collateralNeededA = (price0FinalA * amounts[1] + price1FinalA * amounts[2]) * liquidationIncentive;
+			const maxBorrowable0A = (collateralValue / liquidationIncentive - price1FinalA * amounts[2]) / price0FinalA;
+			const maxBorrowable1A = (collateralValue / liquidationIncentive - price0FinalA * amounts[1]) / price1FinalA;
 			
 			//Case B: price0 / price1 decrease by safetyMargin
 			const price0FinalB = prices[0] / Math.sqrt(safetyMargin);
 			const price1FinalB = prices[1] * Math.sqrt(safetyMargin);
-			const collateralNeededB = (price0FinalB * amounts[1] + price1FinalB * amounts[2]) * liquidationPenalty;
-			const maxBorrowable0B = (collateralValue / liquidationPenalty - price1FinalB * amounts[2]) / price0FinalB;
-			const maxBorrowable1B = (collateralValue / liquidationPenalty - price0FinalB * amounts[1]) / price1FinalB;
+			const collateralNeededB = (price0FinalB * amounts[1] + price1FinalB * amounts[2]) * liquidationIncentive;
+			const maxBorrowable0B = (collateralValue / liquidationIncentive - price1FinalB * amounts[2]) / price0FinalB;
+			const maxBorrowable1B = (collateralValue / liquidationIncentive - price0FinalB * amounts[1]) / price1FinalB;
 			
 			//Calculate liquidity offchain
 			const collateralNeeded = (collateralNeededA > collateralNeededB) ? collateralNeededA : collateralNeededB;
@@ -164,7 +165,6 @@ contract('Collateral', function (accounts) {
 				
 				await collateral._setSafetyMarginSqrt(bnMantissa(Math.sqrt(safetyMargin)), {from: admin});
 				await collateral._setLiquidationIncentive(bnMantissa(liquidationIncentive), {from: admin});
-				await collateral._setLiquidationFee(bnMantissa(liquidationFee), {from: admin});
 				await collateral.setPricesHarness(bnMantissa(prices[0]), bnMantissa(prices[1]));
 			});
 			
@@ -193,7 +193,7 @@ contract('Collateral', function (accounts) {
 			it(`transfer:fail`, async () => {
 				const transferAmount = slightlyIncrease(bnMantissa(expectedLiquidity / exchangeRate + 0.0000001));
 				expect(await collateral.tokensUnlocked.call(user, transferAmount)).to.eq(false);
-				await expectRevert(collateral.transfer(address(0), transferAmount, {from: user}), 'Impermax: INSUFFICIENT_LIQUIDITY');
+				await expectRevert(collateral.transfer(address(0), transferAmount, {from: user}), 'Lyf: INSUFFICIENT_LIQUIDITY');
 			});
 
 			it(`accountLiquidity`, async () => {
@@ -241,14 +241,12 @@ contract('Collateral', function (accounts) {
 		let borrowable0;
 		let borrowable1;
 		const exchangeRate = 2;
-		const liquidationIncentive = 1.02;
-		const liquidationFee = 0.02;
-		const liquidationPenalty = liquidationIncentive + liquidationFee;
+		const liquidationIncentive = 1.04;
 		const price0 = 2;
 		const price1 = 0.5;
 		const collateralTokens = 100;
-		const maxRepay0 = (collateralTokens * exchangeRate) / price0 / liquidationPenalty;
-		const maxRepay1 = (collateralTokens * exchangeRate) / price1 / liquidationPenalty;
+		const maxRepay0 = (collateralTokens * exchangeRate) / price0 / liquidationIncentive;
+		const maxRepay1 = (collateralTokens * exchangeRate) / price1 / liquidationIncentive;
 		
 		before(async () => {
 			collateral = await Collateral.new();
@@ -259,23 +257,22 @@ contract('Collateral', function (accounts) {
 			await collateral.setBorrowable1Harness(borrowable1.address);
 			await collateral.setExchangeRateHarness(bnMantissa(exchangeRate));				
 			await collateral._setLiquidationIncentive(bnMantissa(liquidationIncentive), {from: admin});
-			await collateral._setLiquidationFee(bnMantissa(liquidationFee), {from: admin});
 			await collateral.setPricesHarness(bnMantissa(price0), bnMantissa(price1));
 		});
 		
 		it(`fail if msg.sender is not borrowable`, async () => {
-			await expectRevert(collateral.seize(address(0), address(0), '0'), "Impermax: UNAUTHORIZED");
+			await expectRevert(collateral.seize(address(0), address(0), '0'), "Lyf: UNAUTHORIZED");
 		});
 		
 		it(`fail if shortfall is insufficient`, async () => {
 			await collateral.setAccountLiquidityHarness(borrower, '0', '0');
 			await expectRevert(
 				borrowable0.seizeHarness(collateral.address, liquidator, borrower, '0'), 
-				"Impermax: INSUFFICIENT_SHORTFALL"
+				"Lyf: INSUFFICIENT_SHORTFALL"
 			);
 			await expectRevert(
 				borrowable1.seizeHarness(collateral.address, liquidator, borrower, '0'), 
-				"Impermax: INSUFFICIENT_SHORTFALL"
+				"Lyf: INSUFFICIENT_SHORTFALL"
 			);
 		});
 		
@@ -284,22 +281,20 @@ contract('Collateral', function (accounts) {
 			await collateral.setBalanceHarness(borrower, bnMantissa(collateralTokens));
 			await expectRevert(
 				borrowable0.seizeHarness(collateral.address, liquidator, borrower, slightlyIncrease(bnMantissa(maxRepay0))), 
-				"Impermax: LIQUIDATING_TOO_MUCH"
+				"Lyf: LIQUIDATING_TOO_MUCH"
 			);
 			await expectRevert(
 				borrowable1.seizeHarness(collateral.address, liquidator, borrower, slightlyIncrease(bnMantissa(maxRepay1))), 
-				"Impermax: LIQUIDATING_TOO_MUCH"
+				"Lyf: LIQUIDATING_TOO_MUCH"
 			);
 		});
 		
 		it(`seize succeed`, async () => {
 			await collateral.setAccountLiquidityHarness(borrower, '0', '1');
-			const expectedLiquidity = slightlyDecrease(bnMantissa(collateralTokens * (liquidationPenalty - liquidationFee) / liquidationPenalty));
-			const expectedReservesLiquidity = slightlyDecrease(bnMantissa(collateralTokens * liquidationFee / liquidationPenalty));
+			const expectedLiquidity = slightlyDecrease(bnMantissa(collateralTokens));
 			
 			//Repay with borrowable0
 			await collateral.setBalanceHarness(liquidator, '0');
-			await collateral.setBalanceHarness(reservesManager, '0');
 			await collateral.setBalanceHarness(borrower, bnMantissa(collateralTokens));
 			const repayAmount0 = slightlyDecrease(bnMantissa(maxRepay0));
 			const receipt0 = await borrowable0.seizeHarness(collateral.address, liquidator, borrower, repayAmount0);
@@ -307,16 +302,10 @@ contract('Collateral', function (accounts) {
 				'from': borrower,
 				'to': liquidator,
 			});
-			expectEvent(receipt0, 'Transfer', {
-				'from': borrower,
-				'to': reservesManager,
-			});
 			expectAlmostEqualMantissa(await collateral.balanceOf(liquidator), expectedLiquidity);
-			expectAlmostEqualMantissa(await collateral.balanceOf(reservesManager), expectedReservesLiquidity);
 			
 			//Repay with borrowable1
 			await collateral.setBalanceHarness(liquidator, '0');
-			await collateral.setBalanceHarness(reservesManager, '0');
 			await collateral.setBalanceHarness(borrower, bnMantissa(collateralTokens));
 			const repayAmount1 = slightlyDecrease(bnMantissa(maxRepay1));
 			const receipt1 = await borrowable1.seizeHarness(collateral.address, liquidator, borrower, repayAmount1);
@@ -324,12 +313,7 @@ contract('Collateral', function (accounts) {
 				'from': borrower,
 				'to': liquidator,
 			});
-			expectEvent(receipt0, 'Transfer', {
-				'from': borrower,
-				'to': reservesManager,
-			});
 			expectAlmostEqualMantissa(await collateral.balanceOf(liquidator), expectedLiquidity);
-			expectAlmostEqualMantissa(await collateral.balanceOf(reservesManager), expectedReservesLiquidity);
 		});
 	});
 
@@ -351,7 +335,7 @@ contract('Collateral', function (accounts) {
 			await collateral.setUnderlyingHarness(underlying.address);
 			await collateral.unlockTokensTransfer();
 			recipient = await Recipient.new();
-			callee = (await ImpermaxCallee.new(recipient.address, collateral.address)).address;
+			callee = (await LyfCallee.new(recipient.address, collateral.address)).address;
 		});
 		
 		beforeEach(async () => {
@@ -399,7 +383,7 @@ contract('Collateral', function (accounts) {
 		
 		it('redeem fails if redeemTokens is not enough', async () => {
 			await collateral.transfer(collateral.address, redeemTokens.sub(new BN(1)), {from: user});
-			await expectRevert(collateral.flashRedeem(user, redeemAmount, '0x'), 'Impermax: INSUFFICIENT_REDEEM_TOKENS');
+			await expectRevert(collateral.flashRedeem(user, redeemAmount, '0x'), 'Lyf: INSUFFICIENT_REDEEM_TOKENS');
 		});
 		
 		it('redeemTokens can be more than needed', async () => {
@@ -436,7 +420,7 @@ contract('Collateral', function (accounts) {
 		it('redeem fails if redeemAmount exceeds cash', async () => {
 			await expectRevert(
 				collateral.flashRedeem(user, collateralBalancePrior.add(new BN(1)), '0x'), 
-				'Impermax: INSUFFICIENT_CASH'
+				'Lyf: INSUFFICIENT_CASH'
 			);
 		});
 		
@@ -465,11 +449,11 @@ contract('Collateral', function (accounts) {
 		});
 		
 		it(`borrow reentrancy`, async () => {
-			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [1])), 'Impermax: REENTERED');
-			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [2])), 'Impermax: REENTERED');
-			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [3])), 'Impermax: REENTERED');
-			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [4])), 'Impermax: REENTERED');
-			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [5])), 'Impermax: REENTERED');
+			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [1])), 'Lyf: REENTERED');
+			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [2])), 'Lyf: REENTERED');
+			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [3])), 'Lyf: REENTERED');
+			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [4])), 'Lyf: REENTERED');
+			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [5])), 'Lyf: REENTERED');
 			await expectRevert(collateral.flashRedeem(receiver, '0', encode(['uint'], [0])), 'TEST');
 		});
 	});

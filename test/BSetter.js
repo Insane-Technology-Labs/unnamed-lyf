@@ -1,6 +1,6 @@
 const {
 	makeLendingPool,
-} = require('./Utils/Impermax');
+} = require('./Utils/Lyf');
 const {
 	expectEqual,
 	expectAlmostEqualMantissa,
@@ -12,7 +12,6 @@ const {
 const {
 	address,
 } = require('./Utils/Ethereum');
-const { keccak256, toUtf8Bytes } = require('ethers/utils');
 
 
 const SECONDS_IN_DAY = 24 * 3600;
@@ -26,7 +25,7 @@ const KINK_UR_TEST = bnMantissa(0.8);
 const KINK_UR_MAX = bnMantissa(0.99);
 const ADJUST_SPEED_MIN = bnMantissa(0.005 / SECONDS_IN_DAY);
 const ADJUST_SPEED_TEST = bnMantissa(0.01 / SECONDS_IN_DAY);
-const ADJUST_SPEED_MAX = bnMantissa(5 / SECONDS_IN_DAY);
+const ADJUST_SPEED_MAX = bnMantissa(0.5 / SECONDS_IN_DAY);
 const BORROW_TRACKER_TEST = address(10);
 
 function slightlyIncrease(bn) {
@@ -54,8 +53,8 @@ contract('BSetter', function (accounts) {
 	
 	it('initialization check', async () => {
 		const reserveFactor = bnMantissa(0.1);
-		const kinkUtilizationRate = bnMantissa(0.75);
-		const adjustSpeed = bnMantissa(0.5 / SECONDS_IN_DAY);
+		const kinkUtilizationRate = bnMantissa(0.7);
+		const adjustSpeed = bnMantissa(0.05 / SECONDS_IN_DAY);
 		expectAlmostEqualMantissa(await borrowable.reserveFactor(), reserveFactor);
 		expectAlmostEqualMantissa(await borrowable.kinkUtilizationRate(), kinkUtilizationRate);
 		expectAlmostEqualMantissa(await borrowable.adjustSpeed(), adjustSpeed);
@@ -69,10 +68,10 @@ contract('BSetter', function (accounts) {
 		await borrowable._setKinkUtilizationRate(KINK_UR_TEST, {from: admin});
 		await borrowable._setAdjustSpeed(ADJUST_SPEED_TEST, {from: admin});
 		await borrowable._setBorrowTracker(BORROW_TRACKER_TEST, {from: admin});
-		await expectRevert(borrowable._setReserveFactor(RESERVE_FACTOR_TEST, {from: user}), 'Impermax: UNAUTHORIZED');
-		await expectRevert(borrowable._setKinkUtilizationRate(KINK_UR_TEST, {from: user}), 'Impermax: UNAUTHORIZED');
-		await expectRevert(borrowable._setAdjustSpeed(ADJUST_SPEED_TEST, {from: user}), 'Impermax: UNAUTHORIZED');
-		await expectRevert(borrowable._setBorrowTracker(BORROW_TRACKER_TEST, {from: user}), 'Impermax: UNAUTHORIZED');
+		await expectRevert(borrowable._setReserveFactor(RESERVE_FACTOR_TEST, {from: user}), 'Lyf: UNAUTHORIZED');
+		await expectRevert(borrowable._setKinkUtilizationRate(KINK_UR_TEST, {from: user}), 'Lyf: UNAUTHORIZED');
+		await expectRevert(borrowable._setAdjustSpeed(ADJUST_SPEED_TEST, {from: user}), 'Lyf: UNAUTHORIZED');
+		await expectRevert(borrowable._setBorrowTracker(BORROW_TRACKER_TEST, {from: user}), 'Lyf: UNAUTHORIZED');
 	});
 
 	it('set reserve factory', async () => {
@@ -107,7 +106,7 @@ contract('BSetter', function (accounts) {
 		expectAlmostEqualMantissa(await borrowable.reserveFactor(), succeedMin);
 		await borrowable._setReserveFactor(succeedMax, {from: admin});
 		expectAlmostEqualMantissa(await borrowable.reserveFactor(), succeedMax);
-		await expectRevert(borrowable._setReserveFactor(failMax, {from: admin}), 'Impermax: INVALID_SETTING');
+		await expectRevert(borrowable._setReserveFactor(failMax, {from: admin}), 'Lyf: INVALID_SETTING');
 	});
 
 	it('kink utilization rate boundaries', async () => {
@@ -115,12 +114,12 @@ contract('BSetter', function (accounts) {
 		const succeedMin = slightlyIncrease(KINK_UR_MIN);
 		const succeedMax = slightlyDecrease(KINK_UR_MAX);
 		const failMax = slightlyIncrease(KINK_UR_MAX);
-		await expectRevert(borrowable._setKinkUtilizationRate(failMin, {from: admin}), 'Impermax: INVALID_SETTING');
+		await expectRevert(borrowable._setKinkUtilizationRate(failMin, {from: admin}), 'Lyf: INVALID_SETTING');
 		await borrowable._setKinkUtilizationRate(succeedMin, {from: admin});
 		expectAlmostEqualMantissa(await borrowable.kinkUtilizationRate(), succeedMin);
 		await borrowable._setKinkUtilizationRate(succeedMax, {from: admin});
 		expectAlmostEqualMantissa(await borrowable.kinkUtilizationRate(), succeedMax);
-		await expectRevert(borrowable._setKinkUtilizationRate(failMax, {from: admin}), 'Impermax: INVALID_SETTING');
+		await expectRevert(borrowable._setKinkUtilizationRate(failMax, {from: admin}), 'Lyf: INVALID_SETTING');
 	});
 
 	it('adjust speed boundaries', async () => {
@@ -128,11 +127,11 @@ contract('BSetter', function (accounts) {
 		const succeedMin = slightlyIncrease(ADJUST_SPEED_MIN);
 		const succeedMax = slightlyDecrease(ADJUST_SPEED_MAX);
 		const failMax = slightlyIncrease(ADJUST_SPEED_MAX);
-		await expectRevert(borrowable._setAdjustSpeed(failMin, {from: admin}), 'Impermax: INVALID_SETTING');
+		await expectRevert(borrowable._setAdjustSpeed(failMin, {from: admin}), 'Lyf: INVALID_SETTING');
 		await borrowable._setAdjustSpeed(succeedMin, {from: admin});
 		expectAlmostEqualMantissa(await borrowable.adjustSpeed(), succeedMin);
 		await borrowable._setAdjustSpeed(succeedMax, {from: admin});
 		expectAlmostEqualMantissa(await borrowable.adjustSpeed(), succeedMax);
-		await expectRevert(borrowable._setAdjustSpeed(failMax, {from: admin}), 'Impermax: INVALID_SETTING');
+		await expectRevert(borrowable._setAdjustSpeed(failMax, {from: admin}), 'Lyf: INVALID_SETTING');
 	});
 });

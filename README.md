@@ -1,4 +1,4 @@
-### Impermax x Uniswap V2 Core
+### Unnamed LYF for XYK pools
 
 In order to understand the scope of this project and how it works we suggest the following readings:
 - [Impermax x Uniswap V2 Whitepaper](https://www.impermax.finance/_files/ugd/5c39d7_4fe2a5f2b65e44998d4d39c4da98a7b9.pdf "Impermax x Uniswap V2 Whitepaper"): this document explains the scope and the components of this project from a high level perspective.

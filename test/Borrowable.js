@@ -1,14 +1,14 @@
 const {
 	Borrowable,
 	Collateral,
-	ImpermaxCallee,
+	LyfCallee,
 	ReentrantCallee,
 	Recipient,
 	MockBorrowTracker,
 	makeFactory,
 	makeUniswapV2Pair,
 	makeErc20Token,
-} = require('./Utils/Impermax');
+} = require('./Utils/Lyf');
 const {
 	expectAlmostEqualMantissa,
 	expectRevert,
@@ -20,7 +20,7 @@ const {
 	address,
 	encode,
 } = require('./Utils/Ethereum');
-const { keccak256, toUtf8Bytes } = require('ethers/utils');
+const { keccak256, toUtf8Bytes } = require('ethers').utils;
 
 const oneMantissa = (new BN(10)).pow(new BN(18));
 const K_TRACKER = (new BN(2)).pow(new BN(128));
@@ -88,7 +88,7 @@ contract('Borrowable', function (accounts) {
 		let collateral;
 		let recipient;
 		let borrowTracker;
-		const BORROW_FEE = new BN(0);
+		const BORROW_FEE = (new BN(10)).pow(new BN(15));
 		const borrowAmount = oneMantissa.mul(new BN(20));
 		const borrowedAmount = borrowAmount.mul(BORROW_FEE).div(oneMantissa).add(borrowAmount);
 		
@@ -125,7 +125,7 @@ contract('Borrowable', function (accounts) {
 			expect(await borrowable.borrowAllowance(borrower, root) * 1).to.eq(borrowAmount * 1);
 			const borrowAction = borrowable.borrow(borrower, receiver, borrowAmount, '0x1');
 			if (maxBorrowable.lt(expectedAccountBorrows)) {
-				await expectRevert(borrowAction, 'Impermax: INSUFFICIENT_LIQUIDITY');
+				await expectRevert(borrowAction, 'Lyf: INSUFFICIENT_LIQUIDITY');
 				return false;
 			}
 			const receipt = await borrowAction;
@@ -162,7 +162,7 @@ contract('Borrowable', function (accounts) {
 			underlying = await makeErc20Token();
 			collateral = await Collateral.new();
 			recipient = await Recipient.new();
-			receiver = (await ImpermaxCallee.new(recipient.address, underlying.address)).address;
+			receiver = (await LyfCallee.new(recipient.address, underlying.address)).address;
 			borrowTracker = await MockBorrowTracker.new();
 			await borrowable.setUnderlyingHarness(underlying.address);
 			await borrowable.setCollateralHarness(collateral.address);
@@ -173,13 +173,13 @@ contract('Borrowable', function (accounts) {
 		it(`fail if cash is insufficient`, async () => {
 			await underlying.setBalanceHarness(borrowable.address, '0');
 			await borrowable.sync();
-			await expectRevert(borrowable.borrow(borrower, receiver, '1', '0x'), 'Impermax: INSUFFICIENT_CASH');			
+			await expectRevert(borrowable.borrow(borrower, receiver, '1', '0x'), 'Lyf: INSUFFICIENT_CASH');			
 		});
 
 		it(`fail if not allowed`, async () => {
 			await underlying.setBalanceHarness(borrowable.address, '1');
 			await borrowable.sync();
-			await expectRevert(borrowable.borrow(borrower, receiver, '1', '0x'), 'Impermax: BORROW_NOT_ALLOWED');			
+			await expectRevert(borrowable.borrow(borrower, receiver, '1', '0x'), 'Lyf: BORROW_NOT_ALLOWED');			
 		});
 
 		it(`borrow succeds with enough collateral`, async () => {
@@ -256,15 +256,11 @@ contract('Borrowable', function (accounts) {
 		let recipient;
 		
 		const exchangeRate = oneMantissa.mul(new BN(2));
-		const liquidationIncentive = oneMantissa.mul(new BN(102)).div(new BN(100));
-		const liquidationFee = oneMantissa.mul(new BN(2)).div(new BN(100));
-		const liquidationPenalty = oneMantissa.mul(new BN(104)).div(new BN(100));
+		const liquidationIncentive = oneMantissa.mul(new BN(104)).div(new BN(100));
 		const price = oneMantissa.mul(new BN(3));
 		
 		const repayAmount = oneMantissa.mul(new BN(20));
-		const seizeTokensTotal = repayAmount.mul(price).div(exchangeRate).mul(liquidationPenalty).div(oneMantissa);
-		const seizeTokensLiquidator = repayAmount.mul(price).div(exchangeRate).mul(liquidationIncentive).div(oneMantissa);
-		const seizeTokensReserves = repayAmount.mul(price).div(exchangeRate).mul(liquidationFee).div(oneMantissa);
+		const seizeTokens = repayAmount.mul(price).div(exchangeRate).mul(liquidationIncentive).div(oneMantissa);
 		
 		async function pretendHasBorrowed(borrower, amount) {
 			const borrowIndex = await borrowable.borrowIndex();
@@ -273,12 +269,11 @@ contract('Borrowable', function (accounts) {
 		}
 		
 		before(async () => {
-			factory = await makeFactory({admin, reservesAdmin});
+			factory = await makeFactory({admin});
 			borrowable = await Borrowable.new();
 			underlying = await makeErc20Token();
 			collateral = await Collateral.new();
 			recipient = await Recipient.new();
-			await factory._setReservesManager(reservesManager, {from: reservesAdmin});
 			await borrowable.setUnderlyingHarness(underlying.address);
 			await borrowable.setCollateralHarness(collateral.address);
 			await borrowable.sync(); //avoid undesired borrowBalance growing 
@@ -286,26 +281,25 @@ contract('Borrowable', function (accounts) {
 			await collateral.setBorrowable0Harness(borrowable.address);				
 			await collateral.setExchangeRateHarness(exchangeRate);				
 			await collateral._setLiquidationIncentive(liquidationIncentive, {from: admin});
-			await collateral._setLiquidationFee(liquidationFee, {from: admin});
 			await collateral.setPricesHarness(price, '1');
 		});
 		
 		beforeEach(async () => {
 			await underlying.setBalanceHarness(borrowable.address, '0');
-			await collateral.setBalanceHarness(borrower, seizeTokensTotal);
+			await collateral.setBalanceHarness(borrower, seizeTokens);
 			await borrowable.sync();
 		});
 		
 		it(`fail if shortfall is insufficient`, async () => {
 			await collateral.setAccountLiquidityHarness(borrower, '0', '0');
-			await expectRevert(borrowable.liquidate(borrower, liquidator), "Impermax: INSUFFICIENT_SHORTFALL");		
+			await expectRevert(borrowable.liquidate(borrower, liquidator), "Lyf: INSUFFICIENT_SHORTFALL");		
 		});
 		
 		it(`fail if there is not enough collateral`, async () => {
 			await collateral.setAccountLiquidityHarness(borrower, '0', '1');
 			await pretendHasBorrowed( borrower, repayAmount.mul(new BN(101)).div(new BN(100)) );
 			await underlying.setBalanceHarness( borrowable.address, repayAmount.mul(new BN(101)).div(new BN(100)) );
-			await expectRevert(borrowable.liquidate(borrower, liquidator), "Impermax: LIQUIDATING_TOO_MUCH");		
+			await expectRevert(borrowable.liquidate(borrower, liquidator), "Lyf: LIQUIDATING_TOO_MUCH");		
 		});
 		
 		it(`repayAmount equal accountBorrows`, async () => {
@@ -315,7 +309,7 @@ contract('Borrowable', function (accounts) {
 			const actualSeizeTokens = await borrowable.liquidate.call(borrower, liquidator);
 			const receipt = await borrowable.liquidate(borrower, liquidator);
 			
-			expect(actualSeizeTokens * 1).to.eq(seizeTokensLiquidator * 1);
+			expect(actualSeizeTokens * 1).to.eq(seizeTokens * 1);
 			expect(await borrowable.totalBorrows() * 1).to.eq(0);
 			expect(await borrowable.borrowBalance(borrower) * 1).to.eq(0);
 			expect(await borrowable.totalBalance() * 1).to.eq(repayAmount * 1);
@@ -323,7 +317,7 @@ contract('Borrowable', function (accounts) {
 				sender: root,
 				borrower: borrower,
 				liquidator: liquidator,
-				seizeTokens: seizeTokensLiquidator,
+				seizeTokens: seizeTokens,
 				repayAmount: repayAmount,
 				accountBorrowsPrior: repayAmount,
 				accountBorrows: '0',
@@ -347,7 +341,7 @@ contract('Borrowable', function (accounts) {
 				sender: root,
 				borrower: borrower,
 				liquidator: liquidator,
-				seizeTokens: seizeTokensLiquidator,
+				seizeTokens: seizeTokens,
 				repayAmount: repayAmount,
 				accountBorrowsPrior: accountBorrowsPrior,
 				accountBorrows: accountBorrows,
@@ -371,7 +365,7 @@ contract('Borrowable', function (accounts) {
 				sender: root,
 				borrower: borrower,
 				liquidator: liquidator,
-				seizeTokens: seizeTokensLiquidator.div(new BN(2)),
+				seizeTokens: seizeTokens.div(new BN(2)),
 				repayAmount: repayAmount,
 				accountBorrowsPrior: accountBorrowsPrior,
 				accountBorrows: accountBorrows,
@@ -479,12 +473,12 @@ contract('Borrowable', function (accounts) {
 		});
 		
 		it(`borrow reentrancy`, async () => {
-			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [1])), 'Impermax: REENTERED');
-			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [2])), 'Impermax: REENTERED');
-			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [3])), 'Impermax: REENTERED');
-			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [4])), 'Impermax: REENTERED');
-			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [5])), 'Impermax: REENTERED');
-			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [6])), 'Impermax: REENTERED');
+			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [1])), 'Lyf: REENTERED');
+			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [2])), 'Lyf: REENTERED');
+			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [3])), 'Lyf: REENTERED');
+			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [4])), 'Lyf: REENTERED');
+			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [5])), 'Lyf: REENTERED');
+			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [6])), 'Lyf: REENTERED');
 			await expectRevert(borrowable.borrow(address(0), receiver, '0', encode(['uint'], [0])), 'TEST');
 		});
 	});
