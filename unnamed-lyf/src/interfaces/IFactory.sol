@@ -1,4 +1,5 @@
-pragma solidity >=0.5.0;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity ^0.8.20;
 
 interface IFactory {
 	event LendingPoolInitialized(address indexed uniswapV2Pair, address indexed token0, address indexed token1,
