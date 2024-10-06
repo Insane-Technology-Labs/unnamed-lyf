@@ -31,7 +31,7 @@ contract PoolToken is IPoolToken, LyfERC20 {
 
     // called once by the factory
     function _setFactory() external {
-        require(factory == address(0), "Lyf: FACTORY_ALREADY_SET");
+        require(factory == address(0), ErrorHandler.FAS());
         factory = msg.sender;
     }
 
@@ -56,14 +56,14 @@ contract PoolToken is IPoolToken, LyfERC20 {
     ) external nonReentrant update returns (uint256 mintTokens) {
         uint256 balance = IERC20(underlying).balanceOf(address(this));
         uint256 mintAmount = balance - (totalBalance);
-        mintTokens = (mintAmount * (1e18)) / (exchangeRate());
+        mintTokens = (mintAmount * 1e18) / exchangeRate();
 
         if (totalSupply == 0) {
             // permanently lock the first MINIMUM_LIQUIDITY tokens
             mintTokens -= (MINIMUM_LIQUIDITY);
             _mint(address(0), MINIMUM_LIQUIDITY);
         }
-        require(mintTokens > 0, "Lyf: MINT_AMOUNT_ZERO");
+        require(mintTokens > 0, ErrorHandler.MAZ());
         _mint(minter, mintTokens);
         emit Mint(msg.sender, minter, mintAmount, mintTokens);
     }
@@ -73,10 +73,10 @@ contract PoolToken is IPoolToken, LyfERC20 {
         address redeemer
     ) external nonReentrant update returns (uint256 redeemAmount) {
         uint256 redeemTokens = this.balanceOf(address(this));
-        redeemAmount = (redeemTokens * (exchangeRate())) / (1e18);
+        redeemAmount = (redeemTokens * exchangeRate()) / 1e18;
 
-        require(redeemAmount > 0, "Lyf: REDEEM_AMOUNT_ZERO");
-        require(redeemAmount <= totalBalance, "Lyf: INSUFFICIENT_CASH");
+        require(redeemAmount > 0, ErrorHandler.RAZ());
+        require(redeemAmount <= totalBalance, ErrorHandler.IC());
         _burn(address(this), redeemTokens);
         this.transfer(redeemer, redeemAmount);
         emit Redeem(msg.sender, redeemer, redeemAmount, redeemTokens);

@@ -28,15 +28,15 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
         uint224 currentPrice112x112 = UQ112x112.encode(reserve1).uqdiv(
             reserve0
         );
-        uint256 adjustmentSquared = (uint256(twapPrice112x112) * (2 ** 32)) /
+        uint256 adjustmentSquared = (uint256(twapPrice112x112) * 2 ** 32) /
             (currentPrice112x112);
-        uint256 adjustment = Math.sqrt(adjustmentSquared * (2 ** 32));
+        uint256 adjustment = Math.sqrt(adjustmentSquared * 2 ** 32);
         uint256 currentBorrowable0Price = (uint256(collateralTotalSupply) *
             1e18) / (reserve0 * 2);
         uint256 currentBorrowable1Price = (uint256(collateralTotalSupply) *
             1e18) / (reserve1 * 2);
-        price0 = (currentBorrowable0Price * (adjustment)) / (2 ** 32);
-        price1 = (currentBorrowable1Price * (2 ** 32)) / (adjustment);
+        price0 = (currentBorrowable0Price * (adjustment)) / 2 ** 32;
+        price1 = (currentBorrowable1Price * 2 ** 32) / (adjustment);
         /*
          * Price calculation errors may happen in some edge pairs where
          * reserve0 / reserve1 is close to 2**112 or 1/2**112

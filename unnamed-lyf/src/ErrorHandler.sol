@@ -27,4 +27,10 @@ library ErrorHandler {
     error LTM();
     /// @dev insufficient redeem tokens
     error IRT();
+    /// @dev factory already set
+    error FAS();
+    /// @dev mint amount zero
+    error MAZ();
+    /// @dev redeem amount zero
+    error RAZ();
 }
