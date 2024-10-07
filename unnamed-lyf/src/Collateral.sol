@@ -90,10 +90,12 @@ contract Collateral is ICollateral, PoolToken, CStorage, CSetter {
         uint256 amount0,
         uint256 amount1
     ) public returns (uint256 liquidity, uint256 shortfall) {
-        if (amount0 == type(uint256).max)
-            amount0 = IBorrowable(borrowable0).borrowBalance(borrower);
-        if (amount1 == type(uint256).max)
-            amount1 = IBorrowable(borrowable1).borrowBalance(borrower);
+        amount0 = amount0 == type(uint256).max
+            ? amount0 = IBorrowable(borrowable0).borrowBalance(borrower)
+            : amount0;
+        amount1 = amount1 == type(uint256).max
+            ? amount1 = IBorrowable(borrowable1).borrowBalance(borrower)
+            : amount1;
         uint256 amountCollateral = (this.balanceOf(borrower) * exchangeRate()) /
             1e18;
         return _calculateLiquidity(amountCollateral, amount0, amount1);

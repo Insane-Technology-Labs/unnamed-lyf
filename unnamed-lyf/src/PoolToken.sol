@@ -49,7 +49,7 @@ contract PoolToken is IPoolToken, LyfERC20 {
         return (
             (totalSupply == 0 || totalBalance == 0)
                 ? 1e18
-                : ((totalBalance * 1e18) / (totalSupply))
+                : ((totalBalance * 1e18) / totalSupply)
         );
     }
 
@@ -60,11 +60,11 @@ contract PoolToken is IPoolToken, LyfERC20 {
     ) external nonReentrant update returns (uint256 mintTokens) {
         uint256 balance = IERC20(underlying).balanceOf(address(this));
         /// @dev difference in underlying balance before updating
-        uint256 mintAmount = balance - (totalBalance);
+        uint256 mintAmount = balance - totalBalance;
         mintTokens = (mintAmount * 1e18) / exchangeRate();
 
         if (totalSupply == 0) {
-            // permanently lock the first MINIMUM_LIQUIDITY tokens
+            /// @dev permanently burn the first MINIMUM_LIQUIDITY tokens
             mintTokens -= (MINIMUM_LIQUIDITY);
             _mint(address(0), MINIMUM_LIQUIDITY);
         }
@@ -83,7 +83,7 @@ contract PoolToken is IPoolToken, LyfERC20 {
 
         require(redeemAmount > 0, ErrorHandler.RAZ());
         require(redeemAmount <= totalBalance, ErrorHandler.IC());
-        _burn(address(this), redeemTokens);
+        this._burn(address(this), redeemTokens);
         this.transfer(redeemer, redeemAmount);
         emit Redeem(msg.sender, redeemer, redeemAmount, redeemTokens);
     }

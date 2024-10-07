@@ -35,4 +35,10 @@ library ErrorHandler {
     error RAZ();
     /// @dev borrow not allowed
     error BNA();
+    /// @dev insufficient A amount
+    error IAA();
+    /// @dev insufficient B amount
+    error IBA();
+    /// @dev sender not router
+    error SNR();
 }
