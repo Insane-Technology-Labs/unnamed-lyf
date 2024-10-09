@@ -127,7 +127,7 @@ contract LyfVaultWrapper is ERC20 {
         uint256 _positionIndex
     ) external {
         /// @dev amount checks
-        require(_amount < checkpointedUnderlying, "Insufficient Underlying");
+        require(_amount < available(), "Insufficient Underlying");
         require(_amount != 0, "!W0");
 
         /// @dev ownership / status checks
