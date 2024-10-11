@@ -58,7 +58,8 @@ contract Reservoir is ERC20 {
         /// @dev 8/10th
         uint256 linearStep = (UTIL_BASE * 80) / 100;
         /// @dev max apr for the 1st tier
-        uint256 _maxLinearT1 = (((UTIL_BASE - linearStep) / 2) * MAX_RATE) /
+        /// @dev 1% of total, e.g. at 2500 this is 25% apr
+        uint256 _maxLinearT1 = (((UTIL_BASE - linearStep) / 20) * MAX_RATE) /
             UTIL_BASE;
 
         /// @dev UR <= 80%
@@ -71,7 +72,7 @@ contract Reservoir is ERC20 {
             _apr = _apr > _maxLinearT1 ? _maxLinearT1 : _apr;
         } else if (utilizationRate > linearStep) {
             /// @dev the last 20% utilization accrues linearly at an accelerated pace
-            /// @dev max apr for this tier
+            /// @dev min apr for this tier
             uint256 _minLinear = _maxLinearT1;
             /// @dev 2/10th
             uint256 denom = UTIL_BASE - linearStep;
