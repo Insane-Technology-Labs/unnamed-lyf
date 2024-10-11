@@ -66,6 +66,13 @@ contract LyfVaultWrapper is ERC20 {
         uint256 index,
         UserPosition pos
     );
+
+    event WithdrawPosition(
+        address indexed user,
+        uint256 amount,
+        uint256 index,
+        UserPosition pos
+    );
     event Sweeped(uint256 _took);
     constructor(
         address _vaultToken,
@@ -146,6 +153,7 @@ contract LyfVaultWrapper is ERC20 {
         uint256 initialAmount = _amount;
         _amount = _updateTake(_amount);
         underlying.transfer(msg.sender, _amount);
+        emit WithdrawPosition(msg.sender, initialAmount, _positionIndex, pos);
     }
 
     /// @notice pause or unpause this specific vaultWrapper
@@ -154,10 +162,15 @@ contract LyfVaultWrapper is ERC20 {
     }
 
     /// @dev burns the min shares amount to prevent share inflation
+    /// @dev should be called by the contract creator so users dont have to burn
     function _burnInitial(uint256 _amount) internal returns (uint256 _amount) {
+        /// @dev ensure the amount passed is greater than the minimum
         require(_amount >= MIN_SHARES, "!Enough");
+        /// @dev iterate on the underlying with the burnt shares
         checkpointedUnderlying += MIN_SHARES;
+        /// @dev mint the burn shares to the dead address
         _mint(DEAD, MIN_SHARES);
+        /// @dev reduce the burnt shares from the amount
         _amount -= MIN_SHARES;
     }
 
@@ -165,8 +178,11 @@ contract LyfVaultWrapper is ERC20 {
     function sweep() external {
         /// @dev if any pending, claim
         if (take > 0) {
+            /// @dev record the take before claiming
             uint256 snapshotTake = take;
+            /// @dev reset the take to 0
             take = 0;
+            /// @dev transfer the snapshotted amount
             underlying.transfer(operator, snapshotTake);
             emit Sweeped(snapshotTake);
         }
@@ -177,8 +193,11 @@ contract LyfVaultWrapper is ERC20 {
     function _updateTake(
         uint256 _amount
     ) internal returns (uint256 _newAmount) {
+        /// @dev calculate the fee
         uint256 _take = ((_amount * SECURITY_FEE) / BASIS);
+        /// @dev update the current global take
         take += _take;
+        /// @dev return the new amount subtracting the take
         _newAmount = _amount - _take;
     }
 
@@ -186,8 +205,8 @@ contract LyfVaultWrapper is ERC20 {
     /// @dev excludes min shares and accrued fees
     /// @return _available the available amount of underlying tokens
     function available() public view returns (uint256 _available) {
-        _available = checkpointedUnderlying > (take + MIN_SHARES)
-            ? (checkpointedUnderlying - (take + MIN_SHARES))
+        _available = checkpointedUnderlying > (take + MIN_SHARES) /// @dev safe balance
+            ? (checkpointedUnderlying - (take + MIN_SHARES)) /// @dev sanity check
             : (0);
     }
 }
